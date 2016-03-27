@@ -125,8 +125,8 @@ class Field{
 	void loadField(String filename){
 		car = new Car[]{new Car(200, 100, 0, 0, new Player(base), this)};
 		
-		courceXout = new int[]{10, RaceGame.WID- 10, RaceGame.WID- 10,               10};
-		courceYout = new int[]{10,               10, RaceGame.HEI- 10, RaceGame.HEI- 10};
+		courceXout = new int[]{10, RaceGame.WID- 50, RaceGame.WID- 10,               50};
+		courceYout = new int[]{50,               10, RaceGame.HEI- 50, RaceGame.HEI- 10};
 		courceXin = new int[]{200, RaceGame.WID-200, RaceGame.WID-200,              200};
 		courceYin = new int[]{200,              200, RaceGame.HEI-200, RaceGame.HEI-200};
 		
@@ -141,6 +141,9 @@ class Field{
 	// l.p1を移動ベクトルの始点とする
 	Pos dbg = null;
 	Pos dbg2 = null;
+	Line dbg3 = null;
+	Line dbg4 = null;
+	static final double REBOUND = 0.4;
 	Line collision(Line l, int r){
 		double min = Integer.MAX_VALUE;
 		int minID = -1;
@@ -174,9 +177,17 @@ class Field{
 		}
 		Pos cp = new Pos(l.p1.x+(l.p2.x-l.p1.x)*t, l.p1.y+(l.p2.y-l.p1.y)*t);
 		Pos p = ml.nearPoint(cp);
-		dbg2 = cp;
-		dbg = p;
-		return null;
+		Pos hv = new Pos(l.p2.x-cp.x, l.p2.y-cp.y);
+		Pos pcp = new Pos(cp.x-p.x, cp.y-p.y).resizeVec(1);
+		double hvcos = hv.x*pcp.x+hv.y*pcp.y;
+		pcp.mult(-hvcos*(1+REBOUND));
+		hv.add(pcp);//.add(pcp.mult(-1));
+//		dbg2 = cp;
+//		dbg = p;
+		Line res = new Line(cp, hv.add(cp));
+//		dbg3 = new Line(cp, pcp.add(cp));
+//		dbg4 = l;
+		return res;
 	}
 	
 	void update(){
@@ -199,7 +210,9 @@ class Field{
 		
 		if(dbg != null){
 			drawCircle(dbg, 3, g);
-			drawCircle(dbg2, 10, g);
+			drawCircle(dbg2, Car.R, g);
+			dbg3.draw(g);
+			dbg4.draw(g);
 		}
 	}
 	
@@ -212,7 +225,7 @@ class Car{
 	double dir;
 	double x, y;
 	double vx, vy;
-	final static double ACC = 0.5;
+	final static double ACC = 1;
 	final static double DEC = 0.92;
 	final static double HANDLE_MAX = Math.PI/50;
 	final static double DIR_MAX = Math.PI*2;
@@ -247,20 +260,30 @@ class Car{
 		else if(dir > DIR_MAX) dir -= DIR_MAX;
 	}
 	
+	final static double DEC_BOUND = 0.5;
 	void update(){
 		ai.update(this);
 //		speed -= AIR*speed;
 		vx -= AIR*vx;
 		vy -= AIR*vy;
 		Line vec = new Line(x, y, x+vx, y+vy);
-		if(vx!=0||vy!=0) field.collision(vec, R);
+		if(vx!=0||vy!=0){
+			Line newvec = field.collision(vec, R);
+			if(newvec != null){
+				x = newvec.p1.x+newvec.vec.x;
+				y = newvec.p1.y+newvec.vec.y;
+				Pos v = newvec.vec.resizeVec(Math.sqrt(vx*vx+vy*vy)*DEC_BOUND);
+				vx = v.x;
+				vy = v.y;
+			}
+		}
 		x += vx;
 		y += vy;
 	}
 	
 	final static int[] triX = {10, -10, -10};
 	final static int[] triY = {0, -6, 6};
-	final static int R = 10;
+	final static int R = 5;
 	int[] drawX = new int[3];
 	int[] drawY = new int[3];
 	void draw(Graphics g){
@@ -326,7 +349,7 @@ class Pos implements Comparable<Pos>{
 	}
 	public Pos resizeVec(double size){
 		double sq = Math.sqrt(x*x+y*y);
-		return new Pos(x/sq, y/sq);
+		return new Pos(x*size/sq, y*size/sq);
 	}
 	public Pos mult(double v){
 		x *= v;
@@ -361,9 +384,7 @@ class Line{
 		vec = new Pos(x2-x1, y2-y1);
 	}
 	Pos getNVec(){
-		if(vec.y>=0 && vec.x>0 || vec.y<=0 && vec.x<0)
-			return new Pos(vec.y, vec.x);
-		else return new Pos(-vec.y, -vec.x);
+		return new Pos(-vec.y, vec.x);
 	}
 	Pos crossPos(Line l){
 		if(!cross(l)) return null;
@@ -391,7 +412,7 @@ class Line{
 		return cross(p1, p2, l.p1, l.p2);
 	}
 	static boolean cross(Pos p1, Pos p2, Pos p3, Pos p4){
-		return ccw(p1, p2, p3) * ccw(p1, p2, p4) <= 0 && ccw(p3, p4, p1) * ccw(p3, p4, p2) <= 0;
+		return ccw(p1, p2, p3) * ccw(p1, p2, p4) < 0 && ccw(p3, p4, p1) * ccw(p3, p4, p2) < 0;
 	}
 	static double cross(Pos a, Pos b){
 		return a.x*b.y - b.x*a.y;
