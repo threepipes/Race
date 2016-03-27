@@ -1,8 +1,11 @@
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.Image;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
+import java.awt.geom.AffineTransform;
 
 import javax.swing.JFrame;
 import javax.swing.JPanel;
@@ -11,12 +14,9 @@ public class RaceGame{
 	public static int WID = 1200;
 	public static int HEI = 800;
 	public static void main(String[] args){
-
 		JFrame frame = new JFrame();
 		Base base = new Base();
 		frame.add(base);
-//        frame.setPreferredSize(new Dimension(WID, HEI));
-//        frame.setFocusable(true);
 		frame.pack();
 		frame.setVisible(true);
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -46,6 +46,10 @@ class Base extends JPanel
 	
 	@Override
 	protected void paintComponent(Graphics g) {
+		AffineTransform af = new AffineTransform();
+		af.getMatrix(new double[6]);
+//		af.setToScale(0.5, 0.5);
+		((Graphics2D)g).setTransform(af);
 		field.draw(g);
 	}
 	
@@ -104,9 +108,7 @@ class Base extends JPanel
 	}
 	
 	@Override
-	public void keyTyped(KeyEvent e) {
-		
-	}
+	public void keyTyped(KeyEvent e) {}
 }
 
 class Field{
@@ -123,12 +125,13 @@ class Field{
 	}
 	
 	void loadField(String filename){
-		car = new Car[]{new Car(200, 100, 0, 0, new Player(base), this)};
+//		car = new Car[]{new Car(200, 100, 0, 0, new Player(base), this)};
+		car = new Car[]{new Car(200, 100, 0, 0, new AutoAI(), this)};
 		
 		courceXout = new int[]{10, RaceGame.WID- 50, RaceGame.WID- 10,               50};
 		courceYout = new int[]{50,               10, RaceGame.HEI- 50, RaceGame.HEI- 10};
-		courceXin = new int[]{200, RaceGame.WID-200, RaceGame.WID-200,              200};
-		courceYin = new int[]{200,              200, RaceGame.HEI-200, RaceGame.HEI-200};
+		courceXin = new int[]{200, RaceGame.WID-250, RaceGame.WID-250,              200};
+		courceYin = new int[]{250,              200, RaceGame.HEI-200, RaceGame.HEI-250};
 		
 		int n = courceXout.length;
 		cource = new Line[2*n];
@@ -139,16 +142,13 @@ class Field{
 	}
 	
 	// l.p1を移動ベクトルの始点とする
-	Pos dbg = null;
-	Pos dbg2 = null;
-	Line dbg3 = null;
-	Line dbg4 = null;
 	static final double REBOUND = 0.4;
 	Line collision(Line l, int r){
 		double min = Integer.MAX_VALUE;
 		int minID = -1;
 		for(int i=0; i<cource.length; i++){
 			double d = cource[i].dist(l);
+			if(d==0) d = l.crossPosT(cource[i])-1;
 			if(d<min){
 				min = d;
 				minID = i;
@@ -181,12 +181,8 @@ class Field{
 		Pos pcp = new Pos(cp.x-p.x, cp.y-p.y).resizeVec(1);
 		double hvcos = hv.x*pcp.x+hv.y*pcp.y;
 		pcp.mult(-hvcos*(1+REBOUND));
-		hv.add(pcp);//.add(pcp.mult(-1));
-//		dbg2 = cp;
-//		dbg = p;
+		hv.add(pcp);
 		Line res = new Line(cp, hv.add(cp));
-//		dbg3 = new Line(cp, pcp.add(cp));
-//		dbg4 = l;
 		return res;
 	}
 	
@@ -200,24 +196,18 @@ class Field{
 		g.fillRect(0, 0, RaceGame.WID, RaceGame.HEI);
 		
 		g.setColor(Color.ORANGE);
-//		g.drawPolygon(courceXout, courceYout, courceXout.length);
-//		g.drawPolygon(courceXin, courceYin, courceXin.length);
 		for(Line l: cource) l.draw(g);
 		
 		// draw cars
 		g.setColor(Color.WHITE);
 		for(Car c: car) c.draw(g);
-		
-		if(dbg != null){
-			drawCircle(dbg, 3, g);
-			drawCircle(dbg2, Car.R, g);
-			dbg3.draw(g);
-			dbg4.draw(g);
-		}
 	}
 	
-	void drawCircle(Pos p, int r, Graphics g){
+	static public void drawCircle(Pos p, int r, Graphics g){
 		g.drawOval((int)p.x-r, (int)p.y-r, 2*r, 2*r);
+	}
+	static public void drawCircle(double x, double y, int r, Graphics g){
+		g.drawOval((int)x-r, (int)y-r, 2*r, 2*r);
 	}
 }
 
@@ -263,7 +253,6 @@ class Car{
 	final static double DEC_BOUND = 0.5;
 	void update(){
 		ai.update(this);
-//		speed -= AIR*speed;
 		vx -= AIR*vx;
 		vy -= AIR*vy;
 		Line vec = new Line(x, y, x+vx, y+vy);
@@ -281,9 +270,9 @@ class Car{
 		y += vy;
 	}
 	
-	final static int[] triX = {10, -10, -10};
-	final static int[] triY = {0, -6, 6};
-	final static int R = 5;
+	final static int[] triX = {60, -40, -40};
+	final static int[] triY = {0, -30, 30};
+	final static int R = 30;
 	int[] drawX = new int[3];
 	int[] drawY = new int[3];
 	void draw(Graphics g){
@@ -292,6 +281,7 @@ class Car{
 			drawY[i] = (int)(rotateY(triX[i], triY[i], dir)+y);
 		}
 		g.drawPolygon(drawX, drawY, 3);
+		Field.drawCircle(x, y, R, g);
 	}
 	
 	double rotateX(double x, double y, double dir){
@@ -305,6 +295,25 @@ class Car{
 
 abstract class AI{
 	abstract void update(Car c);
+}
+
+class AutoAI extends AI{
+	int frame = 0;
+	public AutoAI(){
+		
+	}
+	
+	@Override
+	void update(Car c) {
+//		if(frame==0){
+//			c.handle(1);
+//		}else if(frame==1){
+//			c.handle(0.03128);
+//		}
+		c.handle(0.018);
+		c.accel();
+		frame++;
+	}
 }
 
 class Player extends AI{
@@ -408,6 +417,7 @@ class Line{
 				|| p2.compareTo(l.p1) == 0
 				|| p2.compareTo(l.p2) == 0;
 	}
+	// 完全交差のときのみ(一方の端点が一方の線分上のとき交差していない判定となっている)
 	boolean cross(Line l){
 		return cross(p1, p2, l.p1, l.p2);
 	}
@@ -420,8 +430,6 @@ class Line{
 	public static double cross(double x1, double y1, double x2, double y2){
 		return x1*y2 - x2*y1;
 	}
-	// 上正座標で反時計回りが正
-	// 下正なら当然逆になる
 	static double ccw(Pos a, Pos b, Pos c){
 		double dx1 = b.x - a.x;
 		double dy1 = b.y - a.y;
