@@ -138,7 +138,7 @@ class Field{
 		}
 	}
 	
-	// l.p1���ړ��x�N�g���̎n�_�Ƃ���
+	// l.p1を移動ベクトルの始点とする
 	Pos dbg = null;
 	Pos dbg2 = null;
 	Line dbg3 = null;
@@ -420,8 +420,8 @@ class Line{
 	public static double cross(double x1, double y1, double x2, double y2){
 		return x1*y2 - x2*y1;
 	}
-	// �㐳���W�Ŕ����v��肪��
-	// �����Ȃ瓖�R�t�ɂȂ�
+	// 上正座標で反時計回りが正
+	// 下正なら当然逆になる
 	static double ccw(Pos a, Pos b, Pos c){
 		double dx1 = b.x - a.x;
 		double dy1 = b.y - a.y;
@@ -437,7 +437,7 @@ class Line{
 		return dx1*dy2 - dx2*dy1;
 	}
 	public static double dist(Pos a, Pos b, Pos c){
-        // a->b ����c�ւ̋���
+        // a->b からcへの距離
         if(dot(b.x-a.x, b.y-a.y, c.x-a.x, c.y-a.y) < EPS)
             return Math.sqrt(a.dist2(c));
         if(dot(a.x-b.x, a.y-b.y, c.x-b.x, c.y-b.y) < EPS)
@@ -445,7 +445,7 @@ class Line{
         return Math.abs(ccw(a, b, c))/Math.sqrt(a.dist2(b));
     }
 	public double dist(Pos p){
-        // this ����p�ւ̋���
+        // this からpへの距離
         if(dot(p2.x-p1.x, p2.y-p1.y, p.x-p1.x, p.y-p1.y) < EPS)
             return Math.sqrt(p1.dist2(p));
         if(dot(p1.x-p2.x, p1.y-p2.y, p.x-p2.x, p.y-p2.y) < EPS)
