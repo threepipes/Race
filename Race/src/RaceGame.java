@@ -25,9 +25,10 @@ public class RaceGame{
 
 class Base extends JPanel
 	implements Runnable, KeyListener{
+	Dimension WINDOW_SIZE = new Dimension(1200, 800);
 	Field field;
 	public Base() {
-		this.setPreferredSize(new Dimension(RaceGame.WID, RaceGame.HEI));
+		this.setPreferredSize(WINDOW_SIZE);
 		this.setFocusable(true);
 		this.addKeyListener(this);
 		init();
@@ -48,7 +49,7 @@ class Base extends JPanel
 	protected void paintComponent(Graphics g) {
 		AffineTransform af = new AffineTransform();
 		af.getMatrix(new double[6]);
-//		af.setToScale(0.5, 0.5);
+//		af.setToScale(0.25, 0.25);
 		((Graphics2D)g).setTransform(af);
 		field.draw(g);
 	}
@@ -74,36 +75,32 @@ class Base extends JPanel
 		return keyState;
 	}
 	
-	final static int LEFT = 1;
-	final static int RIGHT = 2;
-	final static int ACCEL = 4;
-	final static int BRAKE = 8;
+	final static int LEFT  = 1<<0;
+	final static int RIGHT = 1<<1;
+	final static int ACCEL = 1<<2;
+	final static int BRAKE = 1<<3;
+	final static int DEBUG = 1<<4;
+	final static int[] KEYS = {
+			KeyEvent.VK_LEFT,
+			KeyEvent.VK_RIGHT,
+			KeyEvent.VK_Z,
+			KeyEvent.VK_X,
+			KeyEvent.VK_D
+	};
 	int keyState;
 	@Override
 	public void keyPressed(KeyEvent e) {
 		int key = e.getKeyCode();
-		if(key==KeyEvent.VK_LEFT){
-			keyState |= LEFT;
-		}else if(key==KeyEvent.VK_RIGHT){
-			keyState |= RIGHT;
-		}else if(key==KeyEvent.VK_Z){
-			keyState |= ACCEL;
-		}else if(key==KeyEvent.VK_X){
-			keyState |= BRAKE;
+		for(int i=0; i<KEYS.length; i++){
+			if(key==KEYS[i]) keyState |= 1<<i;
 		}
 	}
 	
 	@Override
 	public void keyReleased(KeyEvent e) {
 		int key = e.getKeyCode();
-		if(key==KeyEvent.VK_LEFT){
-			keyState &= ~LEFT;
-		}else if(key==KeyEvent.VK_RIGHT){
-			keyState &= ~RIGHT;
-		}else if(key==KeyEvent.VK_Z){
-			keyState &= ~ACCEL;
-		}else if(key==KeyEvent.VK_X){
-			keyState &= ~BRAKE;
+		for(int i=0; i<KEYS.length; i++){
+			if(key==KEYS[i]) keyState &= ~(1<<i);
 		}
 	}
 	
@@ -126,12 +123,15 @@ class Field{
 	
 	void loadField(String filename){
 //		car = new Car[]{new Car(200, 100, 0, 0, new Player(base), this)};
-		car = new Car[]{new Car(200, 100, 0, 0, new AutoAI(), this)};
+		car = new Car[]{
+				new Car(200, 100+Car.R*2, 0, 0, new Player(base), this),
+				new Car(200, 100, 0, 0, new AutoAI(), this)
+			};
 		
-		courceXout = new int[]{10, RaceGame.WID- 50, RaceGame.WID- 10,               50};
-		courceYout = new int[]{50,               10, RaceGame.HEI- 50, RaceGame.HEI- 10};
-		courceXin = new int[]{200, RaceGame.WID-250, RaceGame.WID-250,              200};
-		courceYin = new int[]{250,              200, RaceGame.HEI-200, RaceGame.HEI-250};
+		courceXout = new int[]{10, RaceGame.WID- 10, RaceGame.WID- 10,               10};
+		courceYout = new int[]{10,               10, RaceGame.HEI- 10, RaceGame.HEI- 10};
+		courceXin = new int[]{200, RaceGame.WID-200, RaceGame.WID-200,              200};
+		courceYin = new int[]{200,              200, RaceGame.HEI-200, RaceGame.HEI-200};
 		
 		int n = courceXout.length;
 		cource = new Line[2*n];
@@ -190,6 +190,7 @@ class Field{
 		for(Car c: car) c.update();
 	}
 	
+//	double maxSpeed = 0;
 	void draw(Graphics g){
 		// draw field
 		g.setColor(Color.BLACK);
@@ -201,6 +202,14 @@ class Field{
 		// draw cars
 		g.setColor(Color.WHITE);
 		for(Car c: car) c.draw(g);
+		
+//		for(int i=0; i<car.length; i++){
+//			double speed = Math.sqrt(car[i].vx*car[i].vx+car[i].vy*car[i].vy);
+//			if(speed>maxSpeed){
+//				maxSpeed = speed;
+//				System.err.println(speed);
+//			}
+//		}
 	}
 	
 	static public void drawCircle(Pos p, int r, Graphics g){
@@ -273,14 +282,15 @@ class Car{
 	final static int[] triX = {60, -40, -40};
 	final static int[] triY = {0, -30, 30};
 	final static int R = 30;
-	int[] drawX = new int[3];
-	int[] drawY = new int[3];
+	final static int POLY = 3;
+	int[] drawX = new int[POLY];
+	int[] drawY = new int[POLY];
 	void draw(Graphics g){
-		for(int i=0; i<3; i++){
+		for(int i=0; i<POLY; i++){
 			drawX[i] = (int)(rotateX(triX[i], triY[i], dir)+x);
 			drawY[i] = (int)(rotateY(triX[i], triY[i], dir)+y);
 		}
-		g.drawPolygon(drawX, drawY, 3);
+		g.drawPolygon(drawX, drawY, POLY);
 		Field.drawCircle(x, y, R, g);
 	}
 	
@@ -339,6 +349,12 @@ class Player extends AI{
 		}
 		if((key&Base.BRAKE)>0){
 			c.brake();
+		}
+		if((key&Base.DEBUG)>0){
+			c.x = 200;
+			c.y = 100;
+			c.vx = 0;
+			c.vy = 0;
 		}
 	}
 }
